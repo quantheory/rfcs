@@ -5,9 +5,9 @@
 # Summary
 
 Under this RFC, the syntax to specify the type of a fixed-length array
-containing `N` elements of type `T` would be changed to `[T; N]`. Similarly, the
-syntax to construct an array containing `N` duplicated elements of value `x`
-would be changed to `[x; N]`.
+containing `N` elements of type `T` would be changed to `[T for N]`. Similarly,
+the syntax to construct an array containing `N` duplicated elements of value `x`
+would be changed to `[x for N]`.
 
 # Motivation
 
@@ -26,14 +26,14 @@ modifications that would make the range syntax less intuitive.
 # Detailed design
 
 The syntax `[T, ..N]` for specifying array types will be replaced by the new
-syntax `[T; N]`.
+syntax `[T for N]`.
 
 In the expression `[x, ..N]`, the `..N` will refer to an expression of type
 `RangeTo<T>` (where `T` is the type of `N`). As with any other array of two
 elements, `x` will have to be of the same type, and the array expression will be
-of type `[RangeTo<T>; 2]`.
+of type `[RangeTo<T> for 2]`.
 
-The expression `[x; N]` will be equivalent to the old meaning of the syntax
+The expression `[x for N]` will be equivalent to the old meaning of the syntax
 `[x, ..N]`. Specifically, it will create an array of length `N`, each element of
 which has the value `x`.
 
@@ -46,7 +46,7 @@ let a: [uint, ..2] = [0u, ..2];
 to this:
 
 ```rust
-let a: [uint; 2] = [0u; 2];
+let a: [uint for 2] = [0u for 2];
 ```
 
 ## Match patterns
@@ -60,7 +60,7 @@ interpreted as a wildcard, and never as sugar for a range constructor.
 
 While not required by this RFC, one suggested transition plan is as follows:
 
-- Implement the new syntax for `[T; N]`/`[x; N]` proposed above.
+- Implement the new syntax for `[T for N]`/`[x for N]` proposed above.
 
 - Issue deprecation warnings for code that uses `[T, ..N]`/`[x, ..N]`, allowing
   easier identification of code that needs to be transitioned.
@@ -88,6 +88,14 @@ a preference for implementing the RFC 439 slicing syntax as currently specified
 rather than preserving the existing array repeat syntax. This cannot be resolved
 in a backwards-compatible manner if the array repeat syntax is kept.
 
+## Semantic overloading
+
+The `for` keyword is already used in loop expressions and higher-ranked trait
+bounds (and in the future, this will likely be extended to other forms of
+higher-ranked types). This adds an additional meaning to the keyword, but it
+does not conflict with any existing uses, because currently `for` is always used
+as a prefix to a type or expression, rather than as a binary (infix) operator.
+
 # Alternatives
 
 Inaction is not an alternative due to the ambiguity introduced by RFC 439. Some
@@ -108,28 +116,17 @@ be no advocates of this alternative so far.
 ## Different array repeat syntax
 
 The comments in [pull request #498](https://github.com/rust-lang/rfcs/pull/498)
-mentioned many candidates for new syntax other than the `[x; N]` form in this
+mentioned many candidates for new syntax other than the `[x for N]` form in this
 RFC. The comments on the pull request of this RFC mentioned many more.
 
-- Instead of using `[x; N]`, use `[x for N]`.
-
-    - This use of `for` would not be exactly analogous to existing `for` loops,
-      because those accept an iterator rather than an integer. To a new user,
-      the expression `[x for N]` would resemble a list comprehension
-      (e.g. Python's syntax is `[expr for i in iter]`), but in fact it does
-      something much simpler.
-    - It may be better to avoid uses of `for` that could complicate future
-      language features, e.g. returning a value other than `()` from loops, or
-      some other syntactic sugar related to iterators. However, the risk of
-      actual ambiguity is not that high.
-
-- Introduce a different symbol to specify array sizes, e.g. `[T # N]`,
+- Introduce a symbol to specify array sizes, e.g. `[T; N]`, `[T # N]`,
   `[T @ N]`, and so forth.
 
-- Introduce a keyword rather than a symbol. There are many other options, e.g.
-  `[x by N]`. The original version of this proposal was for `[N of x]`, but this
-  was deemed to complicate parsing too much, since the parser would not know
-  whether to expect a type or an expression after the opening bracket.
+- Introduce a new keyword. There are many other options, e.g. `[x by N]`. The
+  original version of this proposal was for `[N of x]`, but this was deemed to
+  complicate parsing too much, since the parser would not know whether to expect
+  a type or an expression after the opening bracket. This also requires a new
+  reserved keyword.
 
 - Any of several more radical changes.
 
@@ -165,15 +162,9 @@ enough to introduce further changes to separate the two. Or this could be
 considered innocuous enough to introduce some additional range-related meaning
 for `..` in certain patterns.
 
-It is possible that the new syntax `[x; N]` could itself be used within
+It is possible that the new syntax `[x for N]` could itself be used within
 patterns.
 
 This RFC does not attempt to address any of these issues, because the current
 pattern syntax does not allow use of the repeated array syntax, and does not
 contain an ambiguity.
-
-## Behavior of `for` in array expressions
-
-It may be useful to allow `for` to take on a new meaning in array expressions.
-This RFC keeps this possibility open, but does not otherwise propose any
-concrete changes to move towards or away from this feature.
